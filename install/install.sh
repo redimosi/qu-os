@@ -85,7 +85,7 @@ if [ -z $response ] || [ $response != "n" ]; then
     software-properties-common
 fi
 
-read -p "docker needed?(y/n)? [n]: " response
+read -p "Docker needed?(y/n)? [n]: " response
 if [ $response == "y" ]; then 
   read -p "download & install docker gpg key(y/n)? [y]: " response
   if [ -z $response ] || [ $response != "n" ]; then
