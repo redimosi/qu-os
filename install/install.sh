@@ -82,7 +82,7 @@ if [ "$EUID" -ne 0 ]
 fi
 
 read -p "apt install tools(y/n)? [n]: " response
-if [[ $response != "y" ]]; then
+if [[ $response == "y" ]]; then
   apt-get update
   apt-get install -y \
     apt-transport-https \
@@ -146,7 +146,7 @@ read -p "Install mosquitto(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
   apt get update
   apt install -y mosquitto
-  systemclt stop mosquitto
+  systemctl stop mosquitto
   mosquitto_passwd -c /etc/mosquitto/passwd qu
   mosquitto_restart=1
 fi
@@ -171,9 +171,9 @@ fi
 
 if [[ $mosquitto_restart -ne 0 ]]; then
   echo "Mosquitto will be restarted ..."
-  systemclt mosquitto stop
-  systemclt mosquitto start
-  systemclt mosquitto status
+  systemctl mosquitto stop
+  systemctl mosquitto start
+  systemctl mosquitto status
 fi
 
 exit
@@ -182,6 +182,6 @@ if [ -z $response ] || [ $response != "n" ]; then
   #
 fi
 read -p "(y/n)? [n]: " response
-if [[ $response != "y" ]]; then
+if [[ $response == "y" ]]; then
   #
 fi
