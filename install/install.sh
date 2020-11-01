@@ -137,7 +137,7 @@ if [ -z $response ] || [ $response != "n" ]; then
   echo "$pull"
   if [[ $pull != "Already up to date." ]]; then
     echo "Restart updated script..."
-    $0
+    $ABSOLUTE_PATH
     exit
   fi
 fi
@@ -149,7 +149,7 @@ if [ -z $response ] || [ $response != "n" ]; then
   apt install -y mosquitto
   systemctl stop mosquitto
   read -p "Add mqtt user(username)? [qu]: " response
-  if [[ -z response ]]; then
+  if [[ -z $response ]]; then
     response="qu"
   fi
   mosquitto_passwd -c /etc/mosquitto/passwd $response
@@ -176,9 +176,9 @@ fi
 
 if [[ $mosquitto_restart -ne 0 ]]; then
   echo "Mosquitto will be restarted ..."
-  systemctl mosquitto stop
-  systemctl mosquitto start
-  systemctl mosquitto status
+  systemctl stop mosquitto
+  systemctl start mosquitto
+  systemctl status mosquitto
 fi
 
 exit
