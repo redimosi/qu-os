@@ -1,7 +1,20 @@
 # qu-os
 
-## Setup Shelly 
+## Produce fresh NUC  
 
-Internet & Security -> Advanced - Developer Setting:  
-"mqtt": {"enable":true,"server":"192.168.1.131:1883","user":"qu","id":"shelly1pm-F26D85","reconnect_timeout_max":60.000000,"reconnect_timeout_min":2.000000,"clean_session":true,"keep_alive":60,"max_qos":0,"retain":false,"update_period":30}
-
+1. Prepare NUC with Debian 10 (buster)  
+   Easiest way is to clone with Clonezilla  
+   If you need to install from scratch, make sure "qu" user exists and is in sudoers group
+2. Install "qu-os" on NUC  
+   1. Login to you favourite linux shell  
+   2. Clone https://github.com/redimosi/qu-os.git  
+   3. Execute qu-os/install/install.sh
+   4. Follow the guidance
+3. Setup Shelly  
+   1. Add shelly to same network as your NUC  
+   2. Go to Internet & Security -> Advanced - Developer Settings
+   3. Setup correct mqtt server settings:  
+       enable":true,  
+       "server":"192.168.?.?:1883",  
+       "user":"qu",  
+       "password":"??"
