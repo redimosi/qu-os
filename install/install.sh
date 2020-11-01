@@ -3,6 +3,7 @@
 RELATIVE_PATH="`dirname \"$0\"`"
 ABSOLUTE_PATH="`realpath \"$0\"`"
 echo "Script Path: $ABSOLUTE_PATH"
+dirname .
 FOLDER_NAME="qu-os"
 
 cmd=$1
@@ -130,7 +131,7 @@ fi
 
 read -p "Check & Update qu-os(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cd $FOLDER_NAME
+  cd ~/$FOLDER_NAME
   pull=`su -c "git pull" qu`
   cd ~
   echo "$pull"
