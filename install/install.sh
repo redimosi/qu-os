@@ -134,9 +134,11 @@ fi
 
 read -p "Check & Update qu-os(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
+  cd $FOLDER_NAME
   pull=`git pull`
   echo "git pull return code $?, echoed $pull"
-  sh -c "$0"
+  sudo sh -c "$0"
+  exit
 fi
 
 read -p "copy several scripts(y/n)? [y]: " response
