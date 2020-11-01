@@ -131,13 +131,13 @@ fi
 
 read -p "Check & Update qu-os(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cd ~/$FOLDER_NAME
+  cd $FOLDER_NAME
   pull=`su -c "git pull" qu`
   cd ~
   echo "$pull"
   if [[ $pull != "Already up to date." ]]; then
     echo "Restart updated script..."
-    sudo sh -c "$ABSOLUTE_PATH"
+    $0
     exit
   fi
 fi
