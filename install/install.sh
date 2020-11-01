@@ -137,7 +137,7 @@ if [ -z $response ] || [ $response != "n" ]; then
   cd $FOLDER_NAME
   pull=`git pull`
   echo "$pull"
-  if [[ $pull -ne "Already up to date." ]]; then
+  if [[ $pull == *"Already up to date"* ]]; then
     echo "Restart updated script..."
     sudo sh -c "$ABSOLUTE_PATH"
     exit
@@ -146,8 +146,7 @@ fi
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cp -r $RELATIVE_PATH
-/etc/* /etc
+  cp -r $RELATIVE_PATH/etc/* /etc
 fi
 
 exit
