@@ -148,7 +148,11 @@ if [ -z $response ] || [ $response != "n" ]; then
   apt get update
   apt install -y mosquitto
   systemctl stop mosquitto
-  mosquitto_passwd -c /etc/mosquitto/passwd qu
+  read -p "Add mqtt user(username)? [qu]: " response
+  if [[ -z response ]]; then
+    response="qu"
+  fi
+  mosquitto_passwd -c /etc/mosquitto/passwd $response
   mosquitto_restart=1
 fi
 
@@ -166,7 +170,7 @@ fi
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cp -r $RELATIVE_PATH/etc/* /etc
+  cp -r -v $RELATIVE_PATH/etc/* /etc
   mosquitto_restart=1
 fi
 
