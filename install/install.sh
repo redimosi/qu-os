@@ -2,8 +2,9 @@
 
 RELATIVE_PATH="`dirname \"$0\"`"
 ABSOLUTE_PATH="`realpath \"$0\"`"
+ABSOLUTE_DIR="`dirname $ABSOLUTE_PATH`"
 echo "Script Path: $ABSOLUTE_PATH"
-dirname .
+
 FOLDER_NAME="qu-os"
 
 cmd=$1
@@ -170,7 +171,7 @@ fi
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cp -r -v $ABSOLUTE_PATH/etc/* /etc
+  cp -r -v $ABSOLUTE_DIR/etc/* /etc
   mosquitto_restart=1
 fi
 
