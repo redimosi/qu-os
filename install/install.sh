@@ -170,7 +170,7 @@ fi
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cp -r -v $RELATIVE_PATH/etc/* /etc
+  cp -r -v $ABSOLUTE_PATH/etc/* /etc
   mosquitto_restart=1
 fi
 
