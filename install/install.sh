@@ -38,27 +38,38 @@ if [[ $cmd == "remote" ]]; then
     fi
     echo "YOU WILL BE ASKED TO ENTER THE PASSWORD SEVERAL TIMES!"
     code=`ssh "qu@$device_ip" "sh -c \"if [ -d $FOLDER_NAME ]; then echo 1 ; else echo 0 ; fi\" "`
+    doClone=0
     if [[ $code -ne 0 ]]; then
-      read -p "Folder $FOLDER_NAME already exists on target. Really want to overwrite (y/n)? [n]: " response
-      if [ $response == "y" ]; then 
+      read -p "Folder $FOLDER_NAME already exists on target. Want to overwrite (y/n)? [n]: " response
+      if [[ $response == "y" ]]; then 
         ssh "qu@$device_ip" "sh -c \"rm -rf $FOLDER_NAME\" "
         if [[ $? -eq 0 ]]; then
           echo "SUCCESS: folder deleted"
+          doClone=1
         else
           echo "ERROR: on folder deletion"
         fi
+      else
+        read -p "Want to do git pull to update(y/n)? [y]: " response
+        if [ -z $response ] || [ $response != "n" ]; then
+          ssh "qu@$device_ip" "sh -c \"cd $FOLDER_NAME; git pull\" "
+        fi
       fi
+    else
+      doClone=1
     fi
-    echo "copy files with scp..."
-    scp -r -p -q "../../$FOLDER_NAME" "qu@$device_ip:~"
-    code=$?
-    if [[ $code -ne 0 ]]; then
-      echo "ERROR on Copy with code: $code"
-      exit 1
+    if [[ doClone -eq 1 ]]; then
+      echo "Clone files on target with git clone"
+      ssh "qu@$device_ip" "sh -c \"git clone https://github.com/redimosi/qu-os.git\" "
+      code=$?
+      if [[ $code -ne 0 ]]; then
+        echo "ERROR on Clone with code: $code"
+        exit 1
+      fi
     fi
     read -p "Want to proceed with installation on device(y/n)? [y]: " response
     if [ -z $response ] || [ $response != "n" ]; then
-      ssh -t "qu@$device_ip" "sudo sh -c $FOLDER_NAME/install/install.sh"
+      ssh -t "qu@$device_ip" "sudo sh -c \"chmod +x $FOLDER_NAME/install/install.sh\" && sudo sh -c $FOLDER_NAME/install/install.sh"
     fi
   fi
   exit 0
@@ -86,7 +97,7 @@ if [ -z $response ] || [ $response != "n" ]; then
 fi
 
 read -p "Docker needed?(y/n)? [n]: " response
-if [ $response == "y" ]; then 
+if [[ $response == "y" ]]; then 
   read -p "download & install docker gpg key(y/n)? [y]: " response
   if [ -z $response ] || [ $response != "n" ]; then
     curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
@@ -121,9 +132,11 @@ if [ $response == "y" ]; then
   fi
 fi
 
-read -p "get install script from git(y/n)? [y]: " response
+read -p "Check & Update qu-os(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  git clone https://github.com/redimosi/qu-os.git
+  pull=`git pull`
+  echo "git pull return code $?, echoed $pull"
+  sh -c "$0"
 fi
 
 read -p "copy several scripts(y/n)? [y]: " response
@@ -131,6 +144,7 @@ if [ -z $response ] || [ $response != "n" ]; then
   cp -r $RELATIVE_PATH
 /etc/* /etc
 fi
+
 
 exit
 read -p "(y/n)? [y]: " response
