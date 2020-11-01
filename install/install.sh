@@ -81,13 +81,9 @@ if [ "$EUID" -ne 0 ]
     exit
 fi
 
-read -p "apt update(y/n)? [y]: " response
-if [ -z $response ] || [ $response != "n" ]; then
+read -p "apt install tools(y/n)? [n]: " response
+if [[ $response != "y" ]]; then
   apt-get update
-fi
-
-read -p "apt install tools(y/n)? [y]: " response
-if [ -z $response ] || [ $response != "n" ]; then
   apt-get install -y \
     apt-transport-https \
     ca-certificates \
@@ -145,13 +141,47 @@ if [ -z $response ] || [ $response != "n" ]; then
   fi
 fi
 
+mosquitto_restart=0
+read -p "Install mosquitto(y/n)? [y]: " response
+if [ -z $response ] || [ $response != "n" ]; then
+  apt get update
+  apt install -y mosquitto
+  systemclt stop mosquitto
+  mosquitto_passwd -c /etc/mosquitto/passwd qu
+  mosquitto_restart=1
+fi
+
+read -p "Want to add another mqtt user(username)? [SKIP]: " response
+if [[ ! -z $response ]]; then
+  mosquitto_passwd /etc/mosquitto/passwd "$response"
+  mosquitto_restart=1
+fi
+
+read -p "Want to delete mqtt user(username)? [SKIP]: " response
+if [[ ! -z $response ]]; then
+  mosquitto_passwd -D /etc/mosquitto/passwd "$response"
+  mosquitto_restart=1
+fi
+
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
   cp -r $RELATIVE_PATH/etc/* /etc
+  mosquitto_restart=1
+fi
+
+if [[ $mosquitto_restart -ne 0 ]]; then
+  echo "Mosquitto will be restarted ..."
+  systemclt mosquitto stop
+  systemclt mosquitto start
+  systemclt mosquitto status
 fi
 
 exit
 read -p "(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
+  #
+fi
+read -p "(y/n)? [n]: " response
+if [[ $response != "y" ]]; then
   #
 fi
