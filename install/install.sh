@@ -2,14 +2,17 @@
 
 RELATIVE_PATH="`dirname \"$0\"`"
 ABSOLUTE_PATH="`realpath \"$0\"`"
+ABSOLUTE_DIR="`dirname $ABSOLUTE_PATH`"
 echo "Script Path: $ABSOLUTE_PATH"
-dirname .
+
 FOLDER_NAME="qu-os"
+NUC_DETECTED=0
 
 cmd=$1
 if [[ -z $cmd ]]; then
   if [[ $ABSOLUTE_PATH == *"/home/qu/"* ]]; then
     cmd="local"
+    NUC_DETECTED=1
     echo "Detected Target, do local installation"
   else
     cmd="remote"
@@ -17,15 +20,31 @@ if [[ -z $cmd ]]; then
   fi
 fi
 
+function uninstall {
+  apt remove -y mosquitto
+  find qu-os/install/etc/ -type f | cut -sd / -f 4- | xargs -I % rm -v "/etc/%"
+  rm -fv "/etc/mosquitto/passwd"
+  rm -rfv "$FOLDER_NAME"
+}
+
 case $cmd in
   "remote") ;;
   "local") ;;
+  "docker") ;;
+  "update") ;;
+  "uninstall") 
+    uninstall
+    exit
+    ;;
   *) echo "
   install [option]
 
   option:
+    [empty]   remote/local depending on execution path
     remote    Basic install on remote device
     local     Do Install locally
+    docker    Do Install docker (ATTENTION: experimental)
+    update    Pull update from GitHub
   "
 esac
 
@@ -76,6 +95,13 @@ if [[ $cmd == "remote" ]]; then
   exit 0
 fi
 
+if [[ $NUC_DETECTED -eq 0 ]]; then
+  read -p "script is not executed on target device, proceed(y/n)? [n]: " response
+  if [[ $response != "y" ]]; then
+    exit 
+  fi
+fi
+
 # check run as root
 if [ "$EUID" -ne 0 ]
     then echo "Please run as root"
@@ -93,52 +119,56 @@ if [[ $response == "y" ]]; then
     software-properties-common
 fi
 
-read -p "Docker needed?(y/n)? [n]: " response
-if [[ $response == "y" ]]; then 
-  read -p "download & install docker gpg key(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
-  fi
+if [[ $cmd == "docker" ]]; then
+  read -p "Docker needed?(y/n)? [n]: " response
+  if [[ $response == "y" ]]; then 
+    read -p "download & install docker gpg key(y/n)? [y]: " response
+    if [ -z $response ] || [ $response != "n" ]; then
+      curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+    fi
 
-  read -p "add docker apt repo(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    add-apt-repository \
-      "deb [arch=amd64] https://download.docker.com/linux/debian \
-      $(lsb_release -cs) \
-      stable"
-  fi
+    read -p "add docker apt repo(y/n)? [y]: " response
+    if [ -z $response ] || [ $response != "n" ]; then
+      add-apt-repository \
+        "deb [arch=amd64] https://download.docker.com/linux/debian \
+        $(lsb_release -cs) \
+        stable"
+    fi
 
-  read -p "apt install docker(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io
-  fi
+    read -p "apt install docker(y/n)? [y]: " response
+    if [ -z $response ] || [ $response != "n" ]; then
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io
+    fi
 
-  read -p "add current user to docker group(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    usermod -aG docker qu
-  fi
+    read -p "add current user to docker group(y/n)? [y]: " response
+    if [ -z $response ] || [ $response != "n" ]; then
+      usermod -aG docker qu
+    fi
 
-  read -p "create git function in .profile(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    echo '
-  function git () {
-    (docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@")
-  }
-  ' >> ~/.profile
+    read -p "create git function in .profile(y/n)? [y]: " response
+    if [ -z $response ] || [ $response != "n" ]; then
+      echo '
+    function git () {
+      (docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@")
+    }
+    ' >> ~/.profile
+    fi
   fi
 fi
 
-read -p "Check & Update qu-os(y/n)? [y]: " response
-if [ -z $response ] || [ $response != "n" ]; then
-  cd $FOLDER_NAME
-  pull=`su -c "git pull" qu`
-  cd ~
-  echo "$pull"
-  if [[ $pull != "Already up to date." ]]; then
-    echo "Restart updated script..."
-    $ABSOLUTE_PATH
-    exit
+if [[ $cmd == "update" ]]; then
+  read -p "Check & Update qu-os(y/n)? [y]: " response
+  if [ -z $response ] || [ $response != "n" ]; then
+    cd $FOLDER_NAME
+    pull=`su -c "git pull" qu`
+    cd ~
+    echo "$pull"
+    if [[ $pull != "Already up to date." ]]; then
+      echo "Restart updated script..."
+      $ABSOLUTE_PATH
+      exit
+    fi
   fi
 fi
 
@@ -170,7 +200,7 @@ fi
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
-  cp -r -v $ABSOLUTE_PATH/etc/* /etc
+  cp -r -v $ABSOLUTE_DIR/etc/* /etc
   mosquitto_restart=1
 fi
 
@@ -190,3 +220,4 @@ read -p "(y/n)? [n]: " response
 if [[ $response == "y" ]]; then
   #
 fi
+
