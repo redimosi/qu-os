@@ -7,16 +7,21 @@ echo "Script Path: $ABSOLUTE_PATH"
 
 FOLDER_NAME="qu-os"
 NUC_DETECTED=0
+MOSQUITTO_CHANGED=0
+
+if [[ $ABSOLUTE_PATH == *"/home/qu/"* ]]; then
+    NUC_DETECTED=1
+    echo "Detected Target"
+  else
+    echo "Target no detected"
+  fi
 
 cmd=$1
 if [[ -z $cmd ]]; then
-  if [[ $ABSOLUTE_PATH == *"/home/qu/"* ]]; then
-    cmd="local"
-    NUC_DETECTED=1
-    echo "Detected Target, do local installation"
-  else
+  if [[ $NUC_DETECTED -eq 0 ]]; then
     cmd="remote"
-    echo "Target no detected, do remote installation"
+  else
+    cmd="local"
   fi
 fi
 
@@ -27,25 +32,118 @@ function uninstall {
   rm -rfv "$FOLDER_NAME"
 }
 
+function update {
+    cd $FOLDER_NAME
+    pull=`su -c "git pull" qu`
+    cd ~
+    echo "$pull"
+    if [[ $pull != "Already up to date." ]]; then
+      echo "Restart updated script..."
+      $ABSOLUTE_PATH
+      exit
+    fi
+}
+
+function listMqttUsers {
+  users=`cat /etc/mosquitto/passwd | cut -d':' -f1 | xargs -I % echo "% " | tr -d '\n'`
+  echo "currently registered users are: $users"
+}
+
+function addMqttUser {
+  listMqttUsers
+  read -p "Enter mqtt username if you want to add one []: " response
+  if [[ ! -z $response ]]; then
+    mosquitto_passwd /etc/mosquitto/passwd "$response"
+    MOSQUITTO_CHANGED=1
+  fi
+}
+
+function deleteMqttUser {
+  listMqttUsers
+  read -p "Enter mqtt username if you want to delete one []: " response
+  if [[ ! -z $response ]]; then
+    mosquitto_passwd -D /etc/mosquitto/passwd "$response"
+    MOSQUITTO_CHANGED=1
+  fi
+  listMqttUsers
+}
+
+function checkRestartMosquitto {
+  if [[ $MOSQUITTO_CHANGED -ne 0 ]]; then
+    echo "Mosquitto will be restarted ..."
+    systemctl stop mosquitto
+    systemctl start mosquitto
+    systemctl status mosquitto
+  fi
+}
+
+function enableMosquittoLogDebug {
+  if grep -Fq "log_type" /etc/mosquitto/mosquitto.conf
+  then
+      sed -i 's/log_type[ a-z]*/log_type all/' "/etc/mosquitto/mosquitto.conf"
+  else
+      echo "log_type all" >> "/etc/mosquitto/mosquitto.conf"
+  fi
+  MOSQUITTO_CHANGED=1
+}
+
+function disableMosquittoLogDebug {
+  if grep -Fq "log_type" /etc/mosquitto/mosquitto.conf
+  then
+      sed -i '/log_type[ a-zA-Z]*/d' "/etc/mosquitto/mosquitto.conf"
+      MOSQUITTO_CHANGED=1
+  fi
+}
+
 case $cmd in
   "remote") ;;
   "local") ;;
   "docker") ;;
-  "update") ;;
+  "logmqttall") 
+    enableMosquittoLogDebug
+    checkRestartMosquitto
+    exit
+    ;;
+  "logmqttstd") 
+    disableMosquittoLogDebug
+    checkRestartMosquitto
+    exit
+    ;;
+  "addmqttuser")
+    addMqttUser
+    checkRestartMosquitto
+    exit
+    ;;
+  "delmqttuser")
+    deleteMqttUser
+    checkRestartMosquitto
+    exit
+    ;;
+  "update") 
+    update
+    exit
+    ;;
   "uninstall") 
     uninstall
     exit
     ;;
   *) echo "
-  install [option]
+  install.sh [option]
 
   option:
-    [empty]   remote/local depending on execution path
-    remote    Basic install on remote device
-    local     Do Install locally
-    docker    Do Install docker (ATTENTION: experimental)
-    update    Pull update from GitHub
+    [empty]     remote/local depending on execution path
+    addmqttuser Adds a new mqtt user
+    delmqttuser Deletes a new mqtt user
+    logmqttall  mqtt log all
+    logmqttstd  mqtt log default
+    remote      Basic install on remote device
+    local       Do Install locally
+    docker      Do Install docker (ATTENTION: experimental)
+    update      Pull update from GitHub
+    uninstall   ATTENTION: Deletes everything
+    help        Shows this help
   "
+  exit
 esac
 
 if [[ $cmd == "remote" ]]; then
@@ -157,22 +255,14 @@ if [[ $cmd == "docker" ]]; then
   fi
 fi
 
-if [[ $cmd == "update" ]]; then
-  read -p "Check & Update qu-os(y/n)? [y]: " response
-  if [ -z $response ] || [ $response != "n" ]; then
-    cd $FOLDER_NAME
-    pull=`su -c "git pull" qu`
-    cd ~
-    echo "$pull"
-    if [[ $pull != "Already up to date." ]]; then
-      echo "Restart updated script..."
-      $ABSOLUTE_PATH
-      exit
-    fi
-  fi
+
+read -p "Check & Update qu-os(y/n)? [y]: " response
+if [ -z $response ] || [ $response != "n" ]; then
+  update
 fi
 
-mosquitto_restart=0
+
+
 read -p "Install mosquitto(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
   apt get update
@@ -183,33 +273,20 @@ if [ -z $response ] || [ $response != "n" ]; then
     response="qu"
   fi
   mosquitto_passwd -c /etc/mosquitto/passwd $response
-  mosquitto_restart=1
+  MOSQUITTO_CHANGED=1
 fi
 
-read -p "Want to add another mqtt user(username)? [SKIP]: " response
-if [[ ! -z $response ]]; then
-  mosquitto_passwd /etc/mosquitto/passwd "$response"
-  mosquitto_restart=1
-fi
+addMqttUser
 
-read -p "Want to delete mqtt user(username)? [SKIP]: " response
-if [[ ! -z $response ]]; then
-  mosquitto_passwd -D /etc/mosquitto/passwd "$response"
-  mosquitto_restart=1
-fi
+deleteMqttUser
 
 read -p "copy several scripts(y/n)? [y]: " response
 if [ -z $response ] || [ $response != "n" ]; then
   cp -r -v $ABSOLUTE_DIR/etc/* /etc
-  mosquitto_restart=1
+  MOSQUITTO_CHANGED=1
 fi
 
-if [[ $mosquitto_restart -ne 0 ]]; then
-  echo "Mosquitto will be restarted ..."
-  systemctl stop mosquitto
-  systemctl start mosquitto
-  systemctl status mosquitto
-fi
+checkRestartMosquitto
 
 exit
 read -p "(y/n)? [y]: " response
